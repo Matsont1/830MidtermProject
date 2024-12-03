@@ -258,6 +258,16 @@ if tab == "DOTS and Wilks":
     st.plotly_chart(plot)
     
 if tab == "Polynomial Regression with Body Weight and Weight Lifted":
+
+    # Load strongman dataset
+    strongman = pd.read_csv('strongman.csv')
+    strongman = strongman.dropna()  # Drop rows with missing values
+
+    # Perform necessary preprocessing
+    strongman['Weight'] = strongman['Weight'].str.replace('kg', '').astype(float)  # Convert weight to float
+    strongman['Log'] = strongman['Log'].str.replace('kg', '').astype(float)  # Convert log to float
+    strongman['Yoke'] = strongman['Yoke'].str.replace('kg', '').astype(float)  # Convert yoke to float
+    
     #Do necessary Calculations
     get_cols = ['Age', 'BodyweightKg', 'Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'Wilks']
     knn = KNNImputer(n_neighbors=5)
@@ -301,7 +311,7 @@ if tab == "Polynomial Regression with Body Weight and Weight Lifted":
     st.title("Polynomial Regression with Body Weight and Weight Lifted")
     
     st.write("""
-    Next, I wanted to see how bodyweight affected each lift, including another strength sports' lifts: olympic lifting. Obviously, the heavier you are, the more fat and muscle you can have to lift more weight, but I wanted to see which lifts had a lower correlation, which then the argument could be made that there is more technicality in the lift as opposed to raw strength. Unsurprisingly, olympic lifts had a lower correlation, but it is interesting to see how much bodyweight correlates to the weight lifted. 
+    Next, I wanted to see how bodyweight affected each lift, including another strength sports' lifts: olympic lifting. Obviously, the heavier you are, the more fat and muscle you can have to lift more weight, but I wanted to see which lifts had a lower correlation, which then the argument could be made that there is more technicality in the lift as opposed to raw strength. Unsurprisingly, olympic lifts had a lower correlation, but it is interesting to see how much bodyweight correlates to the weight lifted. Additionally, strongman data was analyzed to see how the effects of bodyweight affected that sport.  
     """)
     
     # Set the polynomial degree slider (yeah this takes a long time for higher values)
@@ -328,4 +338,19 @@ if tab == "Polynomial Regression with Body Weight and Weight Lifted":
     
     #Bodyweight vs Clean and Jerk
     plot = plot_poly(df_weightlifting[['Bodyweight_(kg)']].values, df_weightlifting['Clean_&_Jerk_(kg)'].values, degree, 'Bodyweight vs. Clean & Jerk', 'Clean_&_Jerk_(kg)', rate=0.1)
+    st.pyplot(plot)
+
+
+    st.subheader("Strongman: Log and Yoke")
+
+    # Strongman: Log
+    plot = plot_poly(strongman[['Weight']].values, strongman['Log'].values, degree, 'Weight vs. Log', 'Log (kg)', rate=0.2)
+    st.pyplot(plot)
+
+    # Strongman: Yoke
+    plot = plot_poly(strongman[['Weight']].values, strongman['Yoke'].values, degree, 'Weight vs. Yoke', 'Yoke (kg)', rate=0.2)
+    st.pyplot(plot)
+
+    # Strongman: Deadlift
+    plot = plot_poly(strongman[['Weight']].values, strongman['Deadlift'].values, degree, 'Weight vs. Deadlift', 'Deadlift (kg)', rate=0.2)
     st.pyplot(plot)
