@@ -267,6 +267,7 @@ if tab == "Polynomial Regression with Body Weight and Weight Lifted":
     strongman['Weight'] = strongman['Weight'].str.replace('kg', '').astype(float)  # Convert weight to float
     strongman['Log'] = strongman['Log'].str.replace('kg', '').astype(float)  # Convert log to float
     strongman['Yoke'] = strongman['Yoke'].str.replace('kg', '').astype(float)  # Convert yoke to float
+    strongman['Deadlift'] = strongman['Deadlift'].str.replace('kg', '').astype(float)  # Convert deadlift to float
     
     #Do necessary Calculations
     get_cols = ['Age', 'BodyweightKg', 'Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'Wilks']
