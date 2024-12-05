@@ -441,7 +441,7 @@ if tab == "DOTS and Wilks Bias Analysis":
 if tab == "Polynomial Regression with Body Weight and Weight Lifted":
 
     # Load strongman dataset
-    strongman = pd.read_csv('strongman.csv')
+    strongman = pd.read_csv('Strongman.csv')
     strongman = strongman.dropna()  # Drop rows with missing values
 
     # Perform necessary preprocessing
