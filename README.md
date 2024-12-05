@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a **Streamlit-based web application** that visualizes and analyzes powerlifting and weightlifting data using **DOTS** and **Wilks** scores. The app enables users to explore and compare the performance of lifters across different categories such as gender, weight class, and equipment. By leveraging machine learning and polynomial regression, the application provides insights into the relationship between body weight and performance for key lifts like the **Squat**, **Bench Press**, **Deadlift**, **Snatch**, and **Clean & Jerk**.
+This project is a **Streamlit-based web application** that visualizes and analyzes powerlifting and weightlifting data using **DOTS** and **Wilks** scores. The app enables users to explore and compare the performance of lifters across different categories such as gender, weight class, and equipment. By leveraging machine learning and polynomial regression, the application provides insights into the relationship between body weight and performance for key lifts in the sports of Powerlifting, Olympic Lifting and Strongman.
 
 ## Features
 
