@@ -20,7 +20,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from lightgbm import LGBMRegressor
 from sklearn.neural_network import MLPRegressor
-from catboost import CatBoostRegressor
 from lightgbm import LGBMRegressor
 #Header
 st.title("Weightlifting and Powerlifting Data")
@@ -568,7 +567,7 @@ if tab == "Lift Prediction Calculator":
         return X, y
 
     # Dropdown to select the model type
-    model_type = st.selectbox("Select the model type:", ["LightGBM", "CatBoost", "MLP", "Random Forest", "KNN"])
+    model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
 
     # Create models for the lift based on the model
     models = {}
@@ -576,8 +575,6 @@ if tab == "Lift Prediction Calculator":
         X, y = data_split(target)
         if model_type == "LightGBM":
             model = LGBMRegressor(n_estimators=100, learning_rate=0.1)
-        elif model_type == "CatBoost":
-            model = CatBoostRegressor(iterations=100, learning_rate=0.1, silent=True)
         elif model_type == "MLP":
             model = MLPRegressor(hidden_layer_sizes=(100,), max_iter=500)
         elif model_type == "Random Forest":
