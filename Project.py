@@ -585,6 +585,10 @@ if tab == "Lift Prediction Calculator":
         model.fit(X, y)
         models[target] = model
 
+    # Initialize session state to track prediction lock
+    if "prediction_lock" not in st.session_state:
+        st.session_state.prediction_lock = False
+
     # Form for user input
     with st.form(key="lift_prediction_form"):
         input_lift = st.selectbox("Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"])
@@ -603,10 +607,11 @@ if tab == "Lift Prediction Calculator":
             bench = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, key="bench_input")
 
         # Submit button
-        submit = st.form_submit_button(label="Predict")
+        submit = st.form_submit_button(label="Predict", disabled=st.session_state.prediction_lock)
 
     # Perform prediction only after the form is submitted
-    if submit:
+    if submit and not st.session_state.prediction_lock:
+        st.session_state.prediction_lock = True  # Lock predictions
         if input_lift == "Squat":
             predicted_value = models['Best3SquatKg'].predict([[bench, deadlift, bodyweight, sex_encoded]])[0]
             st.write("Predicted Squat:", round(predicted_value, 2), "kg")
@@ -616,3 +621,6 @@ if tab == "Lift Prediction Calculator":
         elif input_lift == "Deadlift":
             predicted_value = models['Best3DeadliftKg'].predict([[squat, bench, bodyweight, sex_encoded]])[0]
             st.write("Predicted Deadlift:", round(predicted_value, 2), "kg")
+
+        # Unlock predictions
+        st.session_state.prediction_lock = False
