@@ -552,29 +552,70 @@ if tab == "Polynomial Regression with Body Weight and Weight Lifted":
     st.pyplot(plot)
 
 if tab == "Lift Prediction Calculator":
-    import time
-
     st.subheader("Predict Your Missing Lift")
     st.write("""
     Use this calculator to predict one of your lifts (Squat, Bench, or Deadlift) based on your body weight, sex, and the other two lifts. This can be useful if you want to predict where you should be on a lift, or to identify which of your lifts is the weakest.
     """)
 
-    # Prepare data for training
-    df_data = df_new_powerlift[['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'BodyweightKg', 'Sex_Encoded']].dropna()
+    # Initialize session state for predictions
+    if "inputs" not in st.session_state:
+        st.session_state.inputs = {"input_lift": None, "bodyweight": None, "sex": None, "bench": None, "squat": None, "deadlift": None}
+    if "predict_clicked" not in st.session_state:
+        st.session_state.predict_clicked = False
 
-    # Split data into predictors and target
-    def data_split(target):
-        X = df_data.drop(columns=[target])
-        y = df_data[target]
-        return X, y
+    # User Input
+    st.session_state.inputs["input_lift"] = st.selectbox(
+        "Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"]
+    )
+    st.session_state.inputs["bodyweight"] = st.number_input(
+        "Enter your body weight (kg):", min_value=20.0, max_value=200.0, step=0.1
+    )
+    st.session_state.inputs["sex"] = st.selectbox(
+        "Select your sex:", ["Male", "Female"]
+    )
 
-    # Dropdown to select the model type
-    model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
+    # Lift-specific inputs
+    if st.session_state.inputs["input_lift"] == "Squat":
+        st.session_state.inputs["bench"] = st.number_input(
+            "Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
+        st.session_state.inputs["deadlift"] = st.number_input(
+            "Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
+    elif st.session_state.inputs["input_lift"] == "Bench":
+        st.session_state.inputs["squat"] = st.number_input(
+            "Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
+        st.session_state.inputs["deadlift"] = st.number_input(
+            "Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
+    elif st.session_state.inputs["input_lift"] == "Deadlift":
+        st.session_state.inputs["squat"] = st.number_input(
+            "Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
+        st.session_state.inputs["bench"] = st.number_input(
+            "Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1
+        )
 
-    # Create models for the lift based on the model
-    models = {}
-    for target in ['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg']:
-        X, y = data_split(target)
+    # Button to trigger prediction
+    if st.button("Predict"):
+        st.session_state.predict_clicked = True
+
+    # Perform predictions only when button is clicked
+    if st.session_state.predict_clicked:
+        # Prepare data for training
+        df_data = df_new_powerlift[['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'BodyweightKg', 'Sex_Encoded']].dropna()
+
+        # Split data into predictors and target
+        def data_split(target):
+            X = df_data.drop(columns=[target])
+            y = df_data[target]
+            return X, y
+
+        # Train model based on the selected type
+        model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
+        X, y = data_split(f"Best3{st.session_state.inputs['input_lift']}Kg")
+
         if model_type == "LightGBM":
             model = LGBMRegressor(n_estimators=100, learning_rate=0.1)
         elif model_type == "MLP":
@@ -585,137 +626,24 @@ if tab == "Lift Prediction Calculator":
             model = KNeighborsRegressor(n_neighbors=5)
 
         model.fit(X, y)
-        models[target] = model
 
-    # Initialize session state
-    if "prediction_in_progress" not in st.session_state:
-        st.session_state.prediction_in_progress = False
-    if "cooldown_start_time" not in st.session_state:
-        st.session_state.cooldown_start_time = None
-    if "inputs" not in st.session_state:
-        st.session_state.inputs = {"bodyweight": 70.0, "bench": 100.0, "deadlift": 150.0, "squat": 150.0, "sex": "Male", "input_lift": "Squat"}
-
-    # Cooldown settings
-    cooldown_time = 5  # Cooldown in seconds
-    current_time = time.time()
-    in_cooldown = (
-        st.session_state.cooldown_start_time is not None and
-        current_time - st.session_state.cooldown_start_time < cooldown_time
-    )
-    remaining_cooldown = max(0, cooldown_time - (current_time - st.session_state.cooldown_start_time)) if in_cooldown else 0
-
-    # Disable inputs during prediction or cooldown
-    inputs_disabled = st.session_state.prediction_in_progress or in_cooldown
-
-    # User Input
-    with st.form(key="lift_prediction_form"):
-        st.session_state.inputs["input_lift"] = st.selectbox(
-            "Which lift do you want to predict?",
-            ["Squat", "Bench", "Deadlift"],
-            index=["Squat", "Bench", "Deadlift"].index(st.session_state.inputs["input_lift"]),
-            disabled=inputs_disabled,
-        )
-        st.session_state.inputs["bodyweight"] = st.number_input(
-            "Enter your body weight (kg):",
-            min_value=20.0,
-            max_value=200.0,
-            step=0.1,
-            value=st.session_state.inputs["bodyweight"],
-            disabled=inputs_disabled,
-        )
-        st.session_state.inputs["sex"] = st.selectbox(
-            "Select your sex:",
-            ["Male", "Female"],
-            index=["Male", "Female"].index(st.session_state.inputs["sex"]),
-            disabled=inputs_disabled,
-        )
-
+        # Prepare inputs for prediction
         sex_encoded = 0 if st.session_state.inputs["sex"] == "Male" else 1
-
         if st.session_state.inputs["input_lift"] == "Squat":
-            st.session_state.inputs["bench"] = st.number_input(
-                "Enter your Bench (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["bench"],
-                disabled=inputs_disabled,
-            )
-            st.session_state.inputs["deadlift"] = st.number_input(
-                "Enter your Deadlift (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["deadlift"],
-                disabled=inputs_disabled,
-            )
+            predicted_value = model.predict([[st.session_state.inputs["bench"], 
+                                              st.session_state.inputs["deadlift"], 
+                                              st.session_state.inputs["bodyweight"], 
+                                              sex_encoded]])[0]
         elif st.session_state.inputs["input_lift"] == "Bench":
-            st.session_state.inputs["squat"] = st.number_input(
-                "Enter your Squat (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["squat"],
-                disabled=inputs_disabled,
-            )
-            st.session_state.inputs["deadlift"] = st.number_input(
-                "Enter your Deadlift (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["deadlift"],
-                disabled=inputs_disabled,
-            )
+            predicted_value = model.predict([[st.session_state.inputs["squat"], 
+                                              st.session_state.inputs["deadlift"], 
+                                              st.session_state.inputs["bodyweight"], 
+                                              sex_encoded]])[0]
         elif st.session_state.inputs["input_lift"] == "Deadlift":
-            st.session_state.inputs["squat"] = st.number_input(
-                "Enter your Squat (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["squat"],
-                disabled=inputs_disabled,
-            )
-            st.session_state.inputs["bench"] = st.number_input(
-                "Enter your Bench (kg):",
-                min_value=20.0,
-                max_value=600.0,
-                step=0.1,
-                value=st.session_state.inputs["bench"],
-                disabled=inputs_disabled,
-            )
+            predicted_value = model.predict([[st.session_state.inputs["squat"], 
+                                              st.session_state.inputs["bench"], 
+                                              st.session_state.inputs["bodyweight"], 
+                                              sex_encoded]])[0]
 
-        submit = st.form_submit_button(label="Predict", disabled=inputs_disabled)
-
-    if submit:
-        if not st.session_state.prediction_in_progress and not in_cooldown:
-            # Lock inputs and start prediction
-            st.session_state.prediction_in_progress = True
-            st.session_state.cooldown_start_time = time.time()
-
-            # Perform prediction
-            if st.session_state.inputs["input_lift"] == "Squat":
-                predicted_value = models['Best3SquatKg'].predict(
-                    [[st.session_state.inputs["bench"], st.session_state.inputs["deadlift"], st.session_state.inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.success(f"Predicted Squat: {round(predicted_value, 2)} kg")
-            elif st.session_state.inputs["input_lift"] == "Bench":
-                predicted_value = models['Best3BenchKg'].predict(
-                    [[st.session_state.inputs["squat"], st.session_state.inputs["deadlift"], st.session_state.inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.success(f"Predicted Bench: {round(predicted_value, 2)} kg")
-            elif st.session_state.inputs["input_lift"] == "Deadlift":
-                predicted_value = models['Best3DeadliftKg'].predict(
-                    [[st.session_state.inputs["squat"], st.session_state.inputs["bench"], st.session_state.inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.success(f"Predicted Deadlift: {round(predicted_value, 2)} kg")
-
-            # Unlock inputs after cooldown
-            st.session_state.prediction_in_progress = False
-        else:
-            if in_cooldown:
-                st.warning(f"Cooldown active. Please wait {int(remaining_cooldown)} seconds before submitting again.")
-            else:
-                st.error("Another prediction is already in progress. Please wait.")
-
-    if in_cooldown:
-        st.info(f"Cooldown active: {int(remaining_cooldown)} seconds remaining.")
+        # Display the result
+        st.write(f"Predicted {st.session_state.inputs['input_lift']}:", round(predicted_value, 2), "kg")
