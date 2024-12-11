@@ -552,27 +552,24 @@ if tab == "Polynomial Regression with Body Weight and Weight Lifted":
     st.pyplot(plot)
 
 if tab == "Lift Prediction Calculator":
-    import time
-    import asyncio
-    import streamlit as st
-
     st.subheader("Predict Your Missing Lift")
     st.write("""
     Use this calculator to predict one of your lifts (Squat, Bench, or Deadlift) based on your body weight, sex, and the other two lifts. This can be useful if you want to predict where you should be on a lift, or to identify which of your lifts is the weakest.
     """)
 
-        # Assume df_new_powerlift is already loaded
+    # Prepare data for training
     df_data = df_new_powerlift[['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'BodyweightKg', 'Sex_Encoded']].dropna()
-    
+
+    # Split data into predictors and target
     def data_split(target):
         X = df_data.drop(columns=[target])
         y = df_data[target]
         return X, y
-    
+
     # Dropdown to select the model type
     model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
-    
-    # Create models for each lift
+
+    # Create models for the lift based on the model
     models = {}
     for target in ['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg']:
         X, y = data_split(target)
@@ -584,64 +581,38 @@ if tab == "Lift Prediction Calculator":
             model = RandomForestRegressor(n_estimators=100)
         elif model_type == "KNN":
             model = KNeighborsRegressor(n_neighbors=5)
-    
+
         model.fit(X, y)
         models[target] = model
-    
-    # Initialize session state for debouncing
-    if "last_prediction_time" not in st.session_state:
-        st.session_state.last_prediction_time = 0
-    if "debounce_result" not in st.session_state:
-        st.session_state.debounce_result = None
-    
-    # Form Inputs
+
+    # Form for user input
     with st.form(key="lift_prediction_form"):
-        inputs = {
-            "input_lift": st.selectbox("Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"]),
-            "bodyweight": st.number_input("Enter your body weight (kg):", min_value=20.0, max_value=200.0, step=0.1, value=70.0),
-            "sex": st.selectbox("Select your sex:", ["Male", "Female"]),
-        }
-    
-        if inputs["input_lift"] == "Squat":
-            inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
-            inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-        elif inputs["input_lift"] == "Bench":
-            inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-            inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-        elif inputs["input_lift"] == "Deadlift":
-            inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-            inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
-    
+        input_lift = st.selectbox("Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"])
+        bodyweight = st.number_input("Enter your body weight (kg):", min_value=20.0, max_value=200.0, step=0.1)
+        sex = st.selectbox("Select your sex:", ["Male", "Female"])
+        sex_encoded = 0 if sex == "Male" else 1
+
+        if input_lift == "Squat":
+            bench = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, key="bench_input")
+            deadlift = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, key="deadlift_input")
+        elif input_lift == "Bench":
+            squat = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, key="squat_input")
+            deadlift = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, key="deadlift_input")
+        elif input_lift == "Deadlift":
+            squat = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, key="squat_input")
+            bench = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, key="bench_input")
+
+        # Submit button
         submit = st.form_submit_button(label="Predict")
-    
-    # Trigger prediction with debouncing
+
+    # Perform prediction only after the form is submitted
     if submit:
-        current_time = time.time()
-        debounce_delay = 2  # 2 seconds debounce delay
-    
-        if current_time - st.session_state.last_prediction_time > debounce_delay:
-            st.session_state.last_prediction_time = current_time
-    
-            # Perform prediction
-            sex_encoded = 0 if inputs["sex"] == "Male" else 1
-            if inputs["input_lift"] == "Squat":
-                predicted_value = models['Best3SquatKg'].predict(
-                    [[inputs["bench"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.session_state.debounce_result = f"Predicted Squat: {round(predicted_value, 2)} kg"
-            elif inputs["input_lift"] == "Bench":
-                predicted_value = models['Best3BenchKg'].predict(
-                    [[inputs["squat"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.session_state.debounce_result = f"Predicted Bench: {round(predicted_value, 2)} kg"
-            elif inputs["input_lift"] == "Deadlift":
-                predicted_value = models['Best3DeadliftKg'].predict(
-                    [[inputs["squat"], inputs["bench"], inputs["bodyweight"], sex_encoded]]
-                )[0]
-                st.session_state.debounce_result = f"Predicted Deadlift: {round(predicted_value, 2)} kg"
-        else:
-            st.warning(f"Debouncing... Please wait {int(debounce_delay - (current_time - st.session_state.last_prediction_time))} seconds before submitting again.")
-    
-    # Display the debounced result
-    if st.session_state.debounce_result:
-        st.success(st.session_state.debounce_result)
+        if input_lift == "Squat":
+            predicted_value = models['Best3SquatKg'].predict([[bench, deadlift, bodyweight, sex_encoded]])[0]
+            st.write("Predicted Squat:", round(predicted_value, 2), "kg")
+        elif input_lift == "Bench":
+            predicted_value = models['Best3BenchKg'].predict([[squat, deadlift, bodyweight, sex_encoded]])[0]
+            st.write("Predicted Bench:", round(predicted_value, 2), "kg")
+        elif input_lift == "Deadlift":
+            predicted_value = models['Best3DeadliftKg'].predict([[squat, bench, bodyweight, sex_encoded]])[0]
+            st.write("Predicted Deadlift:", round(predicted_value, 2), "kg")
