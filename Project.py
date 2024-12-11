@@ -561,83 +561,83 @@ if tab == "Lift Prediction Calculator":
     Use this calculator to predict one of your lifts (Squat, Bench, or Deadlift) based on your body weight, sex, and the other two lifts. This can be useful if you want to predict where you should be on a lift, or to identify which of your lifts is the weakest.
     """)
 
-    # Assume df_new_powerlift is already loaded
-df_data = df_new_powerlift[['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'BodyweightKg', 'Sex_Encoded']].dropna()
-
-def data_split(target):
-    X = df_data.drop(columns=[target])
-    y = df_data[target]
-    return X, y
-
-# Dropdown to select the model type
-model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
-
-# Create models for each lift
-models = {}
-for target in ['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg']:
-    X, y = data_split(target)
-    if model_type == "LightGBM":
-        model = LGBMRegressor(n_estimators=100, learning_rate=0.1)
-    elif model_type == "MLP":
-        model = MLPRegressor(hidden_layer_sizes=(100,), max_iter=500)
-    elif model_type == "Random Forest":
-        model = RandomForestRegressor(n_estimators=100)
-    elif model_type == "KNN":
-        model = KNeighborsRegressor(n_neighbors=5)
-
-    model.fit(X, y)
-    models[target] = model
-
-# Initialize session state for debouncing
-if "debounce_task" not in st.session_state:
-    st.session_state.debounce_task = None
-if "debounce_result" not in st.session_state:
-    st.session_state.debounce_result = None
-
-async def debounce_prediction(inputs):
-    """Simulate debounced prediction after a delay."""
-    await asyncio.sleep(2)  # Delay to simulate debouncing
-    sex_encoded = 0 if inputs["sex"] == "Male" else 1
-
+        # Assume df_new_powerlift is already loaded
+    df_data = df_new_powerlift[['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg', 'BodyweightKg', 'Sex_Encoded']].dropna()
+    
+    def data_split(target):
+        X = df_data.drop(columns=[target])
+        y = df_data[target]
+        return X, y
+    
+    # Dropdown to select the model type
+    model_type = st.selectbox("Select the model type:", ["LightGBM", "MLP", "Random Forest", "KNN"])
+    
+    # Create models for each lift
+    models = {}
+    for target in ['Best3SquatKg', 'Best3BenchKg', 'Best3DeadliftKg']:
+        X, y = data_split(target)
+        if model_type == "LightGBM":
+            model = LGBMRegressor(n_estimators=100, learning_rate=0.1)
+        elif model_type == "MLP":
+            model = MLPRegressor(hidden_layer_sizes=(100,), max_iter=500)
+        elif model_type == "Random Forest":
+            model = RandomForestRegressor(n_estimators=100)
+        elif model_type == "KNN":
+            model = KNeighborsRegressor(n_neighbors=5)
+    
+        model.fit(X, y)
+        models[target] = model
+    
+    # Initialize session state for debouncing
+    if "debounce_task" not in st.session_state:
+        st.session_state.debounce_task = None
+    if "debounce_result" not in st.session_state:
+        st.session_state.debounce_result = None
+    
+    async def debounce_prediction(inputs):
+        """Simulate debounced prediction after a delay."""
+        await asyncio.sleep(2)  # Delay to simulate debouncing
+        sex_encoded = 0 if inputs["sex"] == "Male" else 1
+    
+        if inputs["input_lift"] == "Squat":
+            predicted_value = models['Best3SquatKg'].predict(
+                [[inputs["bench"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
+            )[0]
+            st.session_state.debounce_result = f"Predicted Squat: {round(predicted_value, 2)} kg"
+        elif inputs["input_lift"] == "Bench":
+            predicted_value = models['Best3BenchKg'].predict(
+                [[inputs["squat"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
+            )[0]
+            st.session_state.debounce_result = f"Predicted Bench: {round(predicted_value, 2)} kg"
+        elif inputs["input_lift"] == "Deadlift":
+            predicted_value = models['Best3DeadliftKg'].predict(
+                [[inputs["squat"], inputs["bench"], inputs["bodyweight"], sex_encoded]]
+            )[0]
+            st.session_state.debounce_result = f"Predicted Deadlift: {round(predicted_value, 2)} kg"
+    
+    # User Inputs
+    inputs = {
+        "input_lift": st.selectbox("Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"]),
+        "bodyweight": st.number_input("Enter your body weight (kg):", min_value=20.0, max_value=200.0, step=0.1, value=70.0),
+        "sex": st.selectbox("Select your sex:", ["Male", "Female"]),
+    }
+    
     if inputs["input_lift"] == "Squat":
-        predicted_value = models['Best3SquatKg'].predict(
-            [[inputs["bench"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
-        )[0]
-        st.session_state.debounce_result = f"Predicted Squat: {round(predicted_value, 2)} kg"
+        inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
+        inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
     elif inputs["input_lift"] == "Bench":
-        predicted_value = models['Best3BenchKg'].predict(
-            [[inputs["squat"], inputs["deadlift"], inputs["bodyweight"], sex_encoded]]
-        )[0]
-        st.session_state.debounce_result = f"Predicted Bench: {round(predicted_value, 2)} kg"
+        inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
+        inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
     elif inputs["input_lift"] == "Deadlift":
-        predicted_value = models['Best3DeadliftKg'].predict(
-            [[inputs["squat"], inputs["bench"], inputs["bodyweight"], sex_encoded]]
-        )[0]
-        st.session_state.debounce_result = f"Predicted Deadlift: {round(predicted_value, 2)} kg"
-
-# User Inputs
-inputs = {
-    "input_lift": st.selectbox("Which lift do you want to predict?", ["Squat", "Bench", "Deadlift"]),
-    "bodyweight": st.number_input("Enter your body weight (kg):", min_value=20.0, max_value=200.0, step=0.1, value=70.0),
-    "sex": st.selectbox("Select your sex:", ["Male", "Female"]),
-}
-
-if inputs["input_lift"] == "Squat":
-    inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
-    inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-elif inputs["input_lift"] == "Bench":
-    inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-    inputs["deadlift"] = st.number_input("Enter your Deadlift (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-elif inputs["input_lift"] == "Deadlift":
-    inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
-    inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
-
-# Trigger prediction with debouncing
-if st.button("Predict"):
-    if st.session_state.debounce_task is not None:
-        st.session_state.debounce_task.cancel()  # Cancel the previous task if still running
-    st.session_state.debounce_task = asyncio.create_task(debounce_prediction(inputs))
-
-# Display the debounced result
-if st.session_state.debounce_result:
-    st.success(st.session_state.debounce_result)
+        inputs["squat"] = st.number_input("Enter your Squat (kg):", min_value=20.0, max_value=600.0, step=0.1, value=150.0)
+        inputs["bench"] = st.number_input("Enter your Bench (kg):", min_value=20.0, max_value=600.0, step=0.1, value=100.0)
+    
+    # Trigger prediction with debouncing
+    if st.button("Predict"):
+        if st.session_state.debounce_task is not None:
+            st.session_state.debounce_task.cancel()  # Cancel the previous task if still running
+        st.session_state.debounce_task = asyncio.create_task(debounce_prediction(inputs))
+    
+    # Display the debounced result
+    if st.session_state.debounce_result:
+        st.success(st.session_state.debounce_result)
